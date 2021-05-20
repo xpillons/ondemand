@@ -32,3 +32,6 @@ import 'bootstrap/dist/js/bootstrap'
 
 // Import application stylesheets
 require.context('../stylesheets', true)
+
+// Import Stimulus controllers
+import 'controllers'
