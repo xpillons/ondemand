@@ -222,22 +222,8 @@ module BatchConnect
         hsh = hsh.deep_merge attribute.submit(fmt: fmt)
       end
 
-      # rendering context should be attribute values AND staged_root
-      # so we convert the array of Attribute objects to a Hash of id => value pairs
-      # and convert that to an OpenStruct, which gives the same "attribute_name as method" experience,
-      # lets us add staged_root, and avoids conflicts with other predefined methods like partition
-      # (OpenStruct has very few)
-      context_attrs = Hash[*(session_context.map {|a| [a.id, a.value] }.flatten)]
-      illegal_attrs = OpenStruct.new.methods & context_attrs.keys
-
-      raise '#{illegal_attrs.inspect} are keywords that cannot be used as attr names' unless illegal_attrs.empty?
-
-      rendering_context = OpenStruct.new(context_attrs)
-      rendering_context.staged_root = staged_root
-
-      rendering_context.define_singleton_method(:get_binding) { binding }
-
-      hsh = hsh.deep_merge submit_config(binding: rendering_context.get_binding)
+      struct = session_context.to_openstruct(addons: { staged_root: staged_root })
+      hsh = hsh.deep_merge submit_config(binding: struct.get_binding)
     end
 
     # View used for session if it exists

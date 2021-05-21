@@ -70,6 +70,23 @@ module BatchConnect
       self.attributes = cache.select { |k,v| self[k.to_sym] && self[k.to_sym].cacheable?(app_specific_cache_enabled?)  }
    end 
 
+  # Convert this object to an open struct that has a method get_binding for binding.
+  #
+  # @param addons [Hash] a hash of additional key values to add to the context
+  #
+  # @return [OpenStruct] this object as an open struct
+  def to_openstruct(addons: {})
+    context_attrs = Hash[*(self.map {|a| [a.id, a.value] }.flatten)]
+    illegal_attrs = OpenStruct.new.methods & context_attrs.keys
+
+    raise "#{illegal_attrs.inspect} are keywords that cannot be used as attr names" unless illegal_attrs.empty?
+
+    struct = OpenStruct.new(context_attrs.merge(addons))
+    struct.define_singleton_method(:get_binding) { binding }
+
+    struct
+  end
+
    private
     
     FALSE_VALUES=[ false, '', 0, '0', 'f', 'F', 'false', 'FALSE', 'off', 'OFF', 'no', 'NO']
