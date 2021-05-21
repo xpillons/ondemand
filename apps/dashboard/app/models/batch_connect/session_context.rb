@@ -76,12 +76,12 @@ module BatchConnect
   #
   # @return [OpenStruct] this object as an open struct
   def to_openstruct(addons: {})
-    context_attrs = Hash[*(self.map {|a| [a.id, a.value] }.flatten)]
+    context_attrs = Hash[*(self.map {|a| [a.id.to_sym, a.value] }.flatten)]
     illegal_attrs = OpenStruct.new.methods & context_attrs.keys
 
     raise "#{illegal_attrs.inspect} are keywords that cannot be used as attr names" unless illegal_attrs.empty?
 
-    struct = OpenStruct.new(context_attrs.merge(addons))
+    struct = OpenStruct.new(context_attrs.merge(addons.symbolize_keys))
     struct.define_singleton_method(:get_binding) { binding }
 
     struct
