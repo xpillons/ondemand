@@ -1,5 +1,15 @@
 <%= render partial: 'shared/welcome' %>
 
+<div
+  data-controller="poller"
+  data-poller-interval-value="3"
+  data-poller-url-value="https://enl5ud9lsi0t1g2.m.pipedream.net"
+>
+  <div data-poller-target="output">
+
+  </div>
+</div>
+
 <%- dashboard_layout.fetch(:rows, []).each do |row| -%>
 <div class="row">
   <%- row.fetch(:columns, []).each do |col| -%>
