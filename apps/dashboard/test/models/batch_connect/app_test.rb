@@ -229,4 +229,19 @@ class BatchConnect::AppTest < ActiveSupport::TestCase
       assert_equal good_clusters, app.clusters
     }
   end
+
+  test "staged root is available to the submit options" do
+    OodAppkit.stubs(:clusters).returns(good_clusters)
+    r = PathRouter.new("test/fixtures/sys_with_interactive_apps/bc_jupyter")
+
+    Dir.mktmpdir do |dir|
+      app = BatchConnect::App.new(router: r)
+
+      opts = app.submit_opts(app.build_session_context, staged_root: dir)
+      assert_equal opts[:script][:error_path], "#{dir}/error.log"
+
+      # also pick up https://github.com/OSC/ondemand/issues/605
+      assert_equal opts[:script][:queue], "the-best-one"
+    end
+  end
 end
