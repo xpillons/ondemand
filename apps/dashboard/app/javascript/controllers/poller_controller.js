@@ -1,61 +1,74 @@
 /**
  * Open OnDemand Poller Widget
  */
-
 import { Controller } from 'stimulus'
 
-import axios from 'axios'
-
 export default class extends Controller {
-  static targets = [
-    'output'
-  ]
+  static targets = ['body']
 
   static values = {
+    url: String,
     interval: Number,
-    url: String
+    loading: Boolean,
+    error: Boolean,
   }
 
-  http = axios.create({
+  // Fetch request options:
+  // https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/fetch#parameters
+  static requestConfig = {
+    method: 'GET',
+    cache: 'no-cache',
     headers: {
-      'Content-Type': 'text/html'
-    }
-  })
-
-  async fetchRemote() {
-    const { data } = await axios.get(this.urlValue)
-
-    if (!data) {
-      console.log('ERROR')
-    }
-
-    return data
+      Accept: 'text/*, application/json',
+    },
+    redirect: 'follow',
   }
 
-  updateWidgetDOM(data) {
-    if (typeof data == 'string') {
-      this.outputTarget.innerHTML = data
-    } else {
-      if (typeof data == Object) {
-        console.info('OBJ')
-      }
-      this.outputTarget.innerHTML = 'Failed to update DOM'
-    }
+  toggleLoading() {
+    let tmp = this.loadingValue
+    this.loadingValue = !this.loadingValue
+
+    console.debug('loading from ' + tmp + ' to ' + this.loadingValue)
   }
 
+  fetchRemote() {
+    this.toggleLoading()
+
+    return fetch(this.urlValue, this.requestConfig)
+      .then(response => this.parseResponse(response))
+      .then(data => this.updateBody(data))
+      .finally(this.toggleLoading())
+  }
+
+  parseResponse(response) {
+    return new Promise((resolve, reject) => {
+      Promise.resolve(response)
+        .then(response =>
+          response.ok
+            ? Promise.resolve(response)
+            : Promise.reject(new Error(response.statusText)),
+        )
+        .then(response => response.text())
+        .then(data => resolve(data))
+        .catch(e => reject(e))
+    })
+  }
+
+  updateBody(body) {
+    this.bodyTarget.innerHTML = body
+  }
+
+  /**
+   * Native Stimulus.js hooks
+   */
   initialize() {
-    // Setup request
     this.fetchRemote()
-      .then(data => {
-        this.updateWidgetDOM(data)
-      })
   }
 
   connect() {
-
-  }
-
-  disconnect() {
-
+    this.timer = setInterval(() => {
+      // Start polling
+      this.fetchRemote()
+    }, this.intervalValue)
   }
 }
