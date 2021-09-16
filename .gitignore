@@ -61,6 +61,8 @@
 /apps/*/.built
 /packaging/*.tar.gz
 /build
+/ood-proxy-rs/target
+/ood-proxy-rs/resources
 
 lib-cov
 *.seed
