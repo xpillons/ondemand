@@ -1,4 +1,7 @@
-require "test_helper"
+# frozen_string_literal: true
+
+require 'test_helper'
+require 'selenium-webdriver'
 
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   # options = Selenium::WebDriver::Chrome::Options.new
@@ -7,7 +10,14 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   # driven_by :selenium, using: :chrome, screen_size: [1400, 1400], options: {
   #   prefs: { "download.default_directory" => "/tmp/downloads" }
   # }
-  driven_by :selenium, using: :headless_chrome, screen_size: [1400, 1400]
+
+  d = if !ENV['OOD_FF_WEB_DRIVER'].nil?
+        :headless_firefox
+      else
+        :headless_chrome
+      end
+
+  driven_by :selenium, using: d, screen_size: [1400, 1400]
 
   Capybara.server = :webrick
 
@@ -25,5 +35,9 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
 
   def find_value(ele, visible: false)
     find("##{bc_ele_id(ele)}", visible: visible).value
+  end
+
+  def ff?
+    !ENV['OOD_FF_WEB_DRIVER'].nil?
   end
 end

@@ -4,9 +4,11 @@ class FilesTest < ApplicationSystemTestCase
   test "visiting files app doesn't raise js errors" do
     visit files_url(Rails.root.to_s)
 
-    messages = page.driver.browser.manage.logs.get(:browser)
-    content = messages.join("\n")
-    assert_equal 0, messages.length, "console error messages include:\n\n#{content}\n\n"
+    unless ff?
+      messages = page.driver.browser.manage.logs.get(:browser)
+      content = messages.join("\n")
+      assert_equal 0, messages.length, "console error messages include:\n\n#{content}\n\n"
+    end
 
     # problem with using capybara and the Rails system tests:
     # https://github.com/rails/rails/issues/39987
