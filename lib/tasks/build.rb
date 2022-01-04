@@ -44,6 +44,19 @@ namespace :build do
 
   desc "Build all apps"
   task :all => apps.map { |a| a.name }
+
+  desc "Build proxy"
+  task :proxy do
+    proxy_dir = PROJ_DIR.join('ood-proxy-rs')
+
+    build_args = ['cargo', 'build']
+    build_args.concat ['--release']
+    build_args.concat ["--manifest-path #{proxy_dir}/Cargo.toml"]
+
+    Dir.chdir proxy_dir do
+      sh build_args.join(' ')
+    end
+  end
 end
 
 desc "Build OnDemand"
