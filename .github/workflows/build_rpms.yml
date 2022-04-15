@@ -1,0 +1,77 @@
+name: Build RPMs
+
+on:
+  workflow_dispatch:
+  # push:
+  #   branches: [azhop/devel]
+  #   tags:
+  #     - '*'
+
+jobs:
+  build-packages:
+    strategy:
+      fail-fast: false
+      matrix:
+        dist: ["el7"] # "el8", "ubuntu-20.04"
+        version: ["2.0"]
+    runs-on: "ubuntu-latest"
+    name: Build ${{ matrix.dist }} (ondemand-${{ matrix.version }})
+
+    steps:
+      - name: Checkout ${{ github.sha	}}
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Setup Ruby using Bundler
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "2.7.1"
+          bundler: "2.1.4"
+          bundler-cache: true
+
+      - name: Build vendors
+        run: |
+          cd /home/runner/work/ondemand/ondemand/apps/dashboard/vendor/gems/ood_core
+          bundle install
+        env:
+          VERSION: "${{ matrix.version }}.0"
+          OOD_PACKAGING_DEBUG: 'true'
+
+      - name: Build package
+        run: bundle exec rake package:build[${{ matrix.dist }}]
+        env:
+          VERSION: "${{ matrix.version }}.0"
+          OOD_PACKAGING_DEBUG: 'true'
+
+      - name: Run package tests
+        run: bundle exec rake test:e2e
+        env:
+          BEAKER_set: ${{ matrix.dist }}
+          OOD_BUILD_REPO: ${{ matrix.version }}
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+#          tag_name: latest
+          prerelease: true
+          files: |
+            /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-gems-${{ matrix.version }}.0-1.el7.x86_64.rpm
+            /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-selinux-${{ matrix.version }}.0-1.el7.x86_64.rpm
+            /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-${{ matrix.version }}.0-1.el7.src.rpm
+            /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-${{ matrix.version }}.0-1.el7.x86_64.rpm
+            /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-gems-${{ matrix.version }}.0-${{ matrix.version }}.0-1.el7.x86_64.rpm
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # - uses: actions/upload-artifact@v3
+      #   with:
+      #     name: ${{ matrix.dist }}_packages
+      #     path: /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/*.rpm
+
+      - name: Debug failure
+        if: failure()
+        run: |
+          find tmp/e2e_ctr/ -type f -name *.log -exec cat {} +
