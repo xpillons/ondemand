@@ -33,7 +33,7 @@ jobs:
 
       - name: Build vendors
         run: |
-          cd /home/runner/work/ondemand/ondemand/apps/dashboard/vendor/gems/ood_core
+          cd /home/runner/work/ondemand/ondemand/apps/dashboard/vendor/gem/ood_core
           bundle install
         env:
           VERSION: "${{ matrix.version }}.0"
