@@ -40,7 +40,7 @@ jobs:
           OOD_PACKAGING_DEBUG: 'true'
 
       - name: Build package
-        run: bundle exec rake package:build[${{ matrix.dist }}]
+        run: bundle exec rake package:rpm[${{ matrix.dist }}]
         env:
           VERSION: "${{ matrix.version }}.0"
           OOD_PACKAGING_DEBUG: 'true'
