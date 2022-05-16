@@ -2,10 +2,10 @@ name: Build RPMs
 
 on:
   workflow_dispatch:
-  # push:
-  #   branches: [azhop/devel]
-  #   tags:
-  #     - '*'
+  push:
+#    branches: [azhop/devel]
+    tags:
+      - '*'
 
 jobs:
   build-packages:
@@ -64,7 +64,6 @@ jobs:
             /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-${{ matrix.version }}.0-1.el7.src.rpm
             /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-${{ matrix.version }}.0-1.el7.x86_64.rpm
             /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-gems-${{ matrix.version }}.0-${{ matrix.version }}.0-1.el7.x86_64.rpm
-
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
