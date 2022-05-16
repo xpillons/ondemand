@@ -42,7 +42,7 @@ jobs:
       - name: Build package
         run: |
           bundle exec rake rake --tasks
-          bundle exec rake package:build[${{ matrix.dist }}]
+          bundle exec rake package:rpm[${{ matrix.dist }}]
         env:
           VERSION: "${{ matrix.version }}.0"
           OOD_PACKAGING_DEBUG: 'true'
