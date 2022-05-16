@@ -21,10 +21,8 @@ jobs:
       - name: Checkout ${{ github.sha	}}
         uses: actions/checkout@v3
         with:
-          ref: v2.0.23
           submodules: true
           fetch-depth: 0
-
 
       - name: Setup Ruby using Bundler
         uses: ruby/setup-ruby@v1
@@ -33,16 +31,18 @@ jobs:
           bundler: "2.1.4"
           bundler-cache: true
 
-      # - name: Build vendors
-      #   run: |
-      #     cd /home/runner/work/ondemand/ondemand/apps/dashboard/vendor/gems/ood_core
-      #     bundle install
-      #   env:
-      #     VERSION: "${{ matrix.version }}.0"
-      #     OOD_PACKAGING_DEBUG: 'true'
+      - name: Build vendors
+        run: |
+          cd /home/runner/work/ondemand/ondemand/apps/dashboard/vendor/gems/ood_core
+          bundle install
+        env:
+          VERSION: "${{ matrix.version }}.0"
+          OOD_PACKAGING_DEBUG: 'true'
 
       - name: Build package
-        run: bundle exec rake package:build[${{ matrix.dist }}]
+        run: |
+          bundle exec rake rake --tasks
+          bundle exec rake package:build[${{ matrix.dist }}]
         env:
           VERSION: "${{ matrix.version }}.0"
           OOD_PACKAGING_DEBUG: 'true'
