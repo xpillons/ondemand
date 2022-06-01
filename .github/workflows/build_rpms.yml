@@ -14,14 +14,16 @@ jobs:
       matrix:
         dist: ["el7"] # "el8", "ubuntu-20.04"
         version: ["2.0"]
+        build: ["23"]
     runs-on: "ubuntu-latest"
-    name: Build ${{ matrix.dist }} (ondemand-${{ matrix.version }})
+    name: Build ${{ matrix.dist }} (ondemand-${{ matrix.version }}-${{ matrix.build }})
 
     steps:
       - name: Checkout ${{ github.sha }}
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+          ref: v${{ matrix.version }}.${{ matrix.build }}
 
       - name: Checkout ood_core
         uses: actions/checkout@v3
@@ -43,7 +45,7 @@ jobs:
           cd /home/runner/work/ondemand/ondemand/apps/dashboard/vendor/gems/ood_core
           bundle install
         env:
-          VERSION: "${{ matrix.version }}.0"
+          VERSION: "${{ matrix.version }}.${{ matrix.build }}"
           OOD_PACKAGING_DEBUG: 'true'
 
       - name: Update Gemfile to use vendor/gems/ood_core
@@ -56,7 +58,7 @@ jobs:
           bundle exec rake rake --tasks
           bundle exec rake package:rpm[${{ matrix.dist }}] --trace=stdout --verbose
         env:
-          VERSION: "${{ matrix.version }}.0"
+          VERSION: "${{ matrix.version }}.${{ matrix.build }}"
           OOD_PACKAGING_DEBUG: 'true'
 
       - name: Run package tests
@@ -74,11 +76,11 @@ jobs:
 #         with:
 #           prerelease: true
 #           files: |
-#             /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-gems-${{ matrix.version }}.0-1.el7.x86_64.rpm
-#             /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-selinux-${{ matrix.version }}.0-1.el7.x86_64.rpm
-# #            /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-${{ matrix.version }}.0-1.el7.src.rpm
-#             /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-${{ matrix.version }}.0-1.el7.x86_64.rpm
-#             /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-gems-${{ matrix.version }}.0-${{ matrix.version }}.0-1.el7.x86_64.rpm
+#             /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-gems-${{ matrix.version }}.${{ matrix.build }}-1.el7.x86_64.rpm
+#             /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-selinux-${{ matrix.version }}.${{ matrix.build }}-1.el7.x86_64.rpm
+# #            /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-${{ matrix.version }}.${{ matrix.build }}-1.el7.src.rpm
+#             /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-${{ matrix.version }}.${{ matrix.build }}-1.el7.x86_64.rpm
+#             /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-gems-${{ matrix.version }}.${{ matrix.build }}-${{ matrix.version }}.${{ matrix.build }}-1.el7.x86_64.rpm
 #         env:
 #           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
