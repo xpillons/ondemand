@@ -2,10 +2,10 @@ name: Build RPMs
 
 on:
   workflow_dispatch:
-  # push:
-  #   branches: [azhop/devel]
-  #   tags:
-  #     - '*'
+  push:
+#    branches: [azhop/devel]
+    tags:
+      - '*'
 
 jobs:
   build-packages:
@@ -18,11 +18,15 @@ jobs:
     name: Build ${{ matrix.dist }} (ondemand-${{ matrix.version }})
 
     steps:
-      - name: Checkout ${{ github.sha	}}
-        uses: actions/checkout@v2
+      - name: Checkout ${{ github.sha }}
+        uses: actions/checkout@v3
+
+      - name: Checkout ood_core
+        uses: actions/checkout@v3
         with:
-          submodules: true
-          fetch-depth: 0
+          repository: edwardsp/ood_core
+          path: apps/dashboard/vendor/gems/ood_core
+          #ref: azhop_0.19.0
 
       - name: Setup Ruby using Bundler
         uses: ruby/setup-ruby@v1
@@ -33,14 +37,17 @@ jobs:
 
       - name: Build vendors
         run: |
-          cd /home/runner/work/ondemand/ondemand/apps/dashboard/vendor/gem/ood_core
+          ls -alrt /home/runner/work/ondemand/ondemand/apps/dashboard/vendor/gems/ood_core
+          cd /home/runner/work/ondemand/ondemand/apps/dashboard/vendor/gems/ood_core
           bundle install
         env:
           VERSION: "${{ matrix.version }}.0"
           OOD_PACKAGING_DEBUG: 'true'
 
       - name: Build package
-        run: bundle exec rake package:build[${{ matrix.dist }}]
+        run: |
+          bundle exec rake rake --tasks --trace
+          bundle exec rake package:rpm[${{ matrix.dist }}] --trace
         env:
           VERSION: "${{ matrix.version }}.0"
           OOD_PACKAGING_DEBUG: 'true'
@@ -51,25 +58,22 @@ jobs:
           BEAKER_set: ${{ matrix.dist }}
           OOD_BUILD_REPO: ${{ matrix.version }}
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-#          tag_name: latest
-          prerelease: true
-          files: |
-            /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-gems-${{ matrix.version }}.0-1.el7.x86_64.rpm
-            /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-selinux-${{ matrix.version }}.0-1.el7.x86_64.rpm
-            /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-${{ matrix.version }}.0-1.el7.src.rpm
-            /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-${{ matrix.version }}.0-1.el7.x86_64.rpm
-            /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-gems-${{ matrix.version }}.0-${{ matrix.version }}.0-1.el7.x86_64.rpm
+      - name: List packages
+        run: |
+          ls -alrt /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/
 
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # - uses: actions/upload-artifact@v3
-      #   with:
-      #     name: ${{ matrix.dist }}_packages
-      #     path: /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/*.rpm
+#       - name: Create Release
+#         uses: softprops/action-gh-release@v1
+#         with:
+#           prerelease: true
+#           files: |
+#             /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-gems-${{ matrix.version }}.0-1.el7.x86_64.rpm
+#             /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-selinux-${{ matrix.version }}.0-1.el7.x86_64.rpm
+# #            /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-${{ matrix.version }}.0-1.el7.src.rpm
+#             /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-${{ matrix.version }}.0-1.el7.x86_64.rpm
+#             /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-gems-${{ matrix.version }}.0-${{ matrix.version }}.0-1.el7.x86_64.rpm
+#         env:
+#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Debug failure
         if: failure()
