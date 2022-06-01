@@ -55,6 +55,8 @@ end
 
 def codename
   case "#{host_inventory['platform']}-#{host_inventory['platform_version']}"
+  when 'ubuntu-22.04'
+    'jammy'
   when 'ubuntu-20.04'
     'focal'
   else
@@ -70,7 +72,7 @@ def packager
       'dnf'
     end
   else
-    'apt'
+    'DEBIAN_FRONTEND=noninteractive apt --no-install-recommends'
   end
 end
 
@@ -129,7 +131,7 @@ def bootstrap_repos
     if host_inventory['platform_version'] =~ /^7/
       repos << 'centos-release-scl yum-plugin-priorities'
     else
-      on hosts, 'dnf -y module enable ruby:2.7'
+      on hosts, 'dnf -y module enable ruby:3.0'
       on hosts, 'dnf -y module enable nodejs:14'
     end
   elsif host_inventory['platform'] == 'ubuntu'
@@ -189,7 +191,7 @@ def install_ondemand
     install_packages(['ondemand', 'ondemand-dex', 'ondemand-selinux'])
   elsif host_inventory['platform'] == 'ubuntu'
     install_packages(['wget'])
-    on hosts, 'wget -O /tmp/ondemand-release.deb https://yum.osc.edu/ondemand/latest/ondemand-release-web-latest_2_all.deb'
+    on hosts, 'wget -O /tmp/ondemand-release.deb https://yum.osc.edu/ondemand/latest/ondemand-release-web-latest_1_all.deb'
     install_packages(['/tmp/ondemand-release.deb'])
     on hosts, "sed -i 's|/latest/|/build/#{build_repo_version}/|g' /etc/apt/sources.list.d/ondemand-web.list"
     on hosts, 'apt-get update'
@@ -200,8 +202,28 @@ def install_ondemand
   on hosts, "systemctl daemon-reload"
 end
 
+def fix_apache
+  # ubuntu has it's own default page
+  if host_inventory['platform'] == 'ubuntu'
+    default_config = '/etc/apache2/sites-enabled/000-default.conf'
+    on hosts, "test -L #{default_config} && unlink #{default_config} || exit 0"
+  end
+end
+
 def upload_portal_config(file)
   scp_to(hosts, portal_fixture(file), '/etc/ood/config/ood_portal.yml')
+end
+
+def host_portal_config
+  if host_inventory['platform'] == 'redhat'
+    if host_inventory['platform_version'] =~ /^7/
+       '/opt/rh/httpd24/root/etc/httpd/conf.d/ood-portal.conf'
+     else
+      '/etc/httpd/conf.d/ood-portal.conf'
+     end
+  else
+    '/etc/apache2/sites-available/ood-portal.conf'
+  end
 end
 
 def update_ood_portal

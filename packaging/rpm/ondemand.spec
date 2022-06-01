@@ -5,9 +5,9 @@
 %define git_tag_minus_v %(echo %{git_tag} | sed -r 's/^v//')
 %define major_version %(echo %{git_tag_minus_v} | cut -d. -f1)
 %define minor_version %(echo %{git_tag_minus_v} | cut -d. -f2)
-%define runtime_version %{major_version}.%{minor_version}-1
-%define next_major_version %(echo $((%{major_version}+1))).0
-%define next_minor_version %{major_version}.%(echo $((%{minor_version}+1)))
+%define runtime_version %{major_version}.%{minor_version}.1
+%define runtime_release 1
+%define runtime_version_full %{runtime_version}-%{runtime_release}%{?dist}
 %define selinux_policy_ver %(rpm --qf "%%{version}-%%{release}" -q selinux-policy)
 %global selinux_module_version %{package_version}.%{package_release}
 %global gem_home %{scl_ondemand_core_gem_home}/%{version}
@@ -37,38 +37,34 @@ Source2:   ondemand-selinux.fc
 %bcond_with scl_apache
 %define apache_confd /etc/httpd/conf.d
 %define apache_service httpd
-%define htcacheclean_service htcacheclean
-%define python_dep python2
 %else
 %bcond_without scl_apache
 %define apache_confd /opt/rh/httpd24/root/etc/httpd/conf.d
 %define apache_service httpd24-httpd
-%define htcacheclean_service httpd24-htcacheclean
-%define python_dep python
 %endif
 
 # Disable automatic dependencies as it causes issues with bundled gems and
 # node.js packages used in the apps
 AutoReqProv:     no
 
-BuildRequires:   ondemand-runtime >= %{runtime_version}, ondemand-runtime < %{next_major_version}, ondemand-runtime < %{next_minor_version}
-BuildRequires:   ondemand-scldevel >= %{runtime_version}, ondemand-scldevel < %{next_major_version}, ondemand-scldevel < %{next_minor_version}
-BuildRequires:   ondemand-build >= %{runtime_version}, ondemand-build < %{next_major_version}, ondemand-build < %{next_minor_version}
-BuildRequires:   ondemand-ruby >= %{runtime_version}, ondemand-ruby < %{next_major_version}, ondemand-ruby < %{next_minor_version}
-BuildRequires:   ondemand-nodejs >= %{runtime_version}, ondemand-nodejs < %{next_major_version}, ondemand-nodejs < %{next_minor_version}
+BuildRequires:   ondemand-runtime = %{runtime_version_full}
+BuildRequires:   ondemand-scldevel = %{runtime_version_full}
+BuildRequires:   ondemand-build = %{runtime_version_full}
+BuildRequires:   ondemand-ruby = %{runtime_version_full}
+BuildRequires:   ondemand-nodejs = %{runtime_version_full}
 BuildRequires:   rsync
 BuildRequires:   git
-BuildRequires:   %{python_dep}
+BuildRequires:   python3
 
 Requires:        git
-Requires:        sudo, lsof, cronie, wget, curl, make, rsync, file, libxml2, libxslt, zlib, lua-posix
-Requires:        %{python_dep}
-Requires:        ondemand-apache >= %{runtime_version}, ondemand-apache < %{next_major_version}, ondemand-apache < %{next_minor_version}
-Requires:        ondemand-nginx = 1.20.1
-Requires:        ondemand-passenger = 6.0.11
-Requires:        ondemand-ruby >= %{runtime_version}, ondemand-ruby < %{next_major_version}, ondemand-ruby < %{next_minor_version}
-Requires:        ondemand-nodejs >= %{runtime_version}, ondemand-nodejs < %{next_major_version}, ondemand-nodejs < %{next_minor_version}
-Requires:        ondemand-runtime >= %{runtime_version}, ondemand-runtime < %{next_major_version}, ondemand-runtime < %{next_minor_version}
+Requires:        sudo, lsof, cronie, wget, curl, make, rsync, file, libxml2, libxslt, zlib, lua-posix, diffutils
+Requires:        python3
+Requires:        ondemand-apache = %{runtime_version_full}
+Requires:        ondemand-nginx = 1.20.2-1.p6.0.14.ood%{runtime_version}%{?dist}
+Requires:        ondemand-passenger = 6.0.14-1.ood%{runtime_version}%{?dist}
+Requires:        ondemand-ruby = %{runtime_version_full}
+Requires:        ondemand-nodejs = %{runtime_version_full}
+Requires:        ondemand-runtime = %{runtime_version_full}
 Requires:        %{gems_name}
 
 BuildRequires: systemd
@@ -82,7 +78,7 @@ access, job submission and interactive work on compute nodes.
 %package -n %{name}-selinux
 Summary: SELinux policy for OnDemand
 BuildRequires:      selinux-policy, selinux-policy-devel, checkpolicy, policycoreutils
-Requires:           %{name} = %{version}
+Requires:           %{name} = %{version}-%{release}
 Requires:           selinux-policy >= %{selinux_policy_ver}
 Requires(post):     /usr/sbin/semodule, /sbin/restorecon, /usr/sbin/setsebool, /usr/sbin/selinuxenabled, /usr/sbin/semanage
 Requires(post):     selinux-policy-targeted
@@ -167,18 +163,19 @@ echo "%{git_tag}" > %{buildroot}/opt/ood/VERSION
 %__install -D -m 644 ood-portal-generator/share/ood_portal_example.yml \
     %{buildroot}%{_sysconfdir}/ood/config/ood_portal.yml
 %__mkdir_p %{buildroot}%{apache_confd}
-touch %{buildroot}%{apache_confd}/ood-portal.conf
+PREFIX=%{buildroot} %{buildroot}/opt/ood/ood-portal-generator/sbin/update_ood_portal
+%__sed -i 's|%{buildroot}||g' %{buildroot}%{_sysconfdir}/ood/config/ood_portal.sha256sum
 %__mkdir_p %{buildroot}%{_localstatedir}/www/ood/public/maintenance
 %__install -D -m 644 ood-portal-generator/share/maintenance.html \
     %{buildroot}%{_localstatedir}/www/ood/public/maintenance/index.html
+%__install -D -m 644 ood-portal-generator/share/need_auth.html \
+    %{buildroot}%{_localstatedir}/www/ood/public/need_auth.html
 
 %__install -D -m 644 nginx_stage/share/nginx_stage_example.yml \
     %{buildroot}%{_sysconfdir}/ood/config/nginx_stage.yml
 touch %{buildroot}%{_sharedstatedir}/ondemand-nginx/config/apps/sys/dashboard.conf
 touch %{buildroot}%{_sharedstatedir}/ondemand-nginx/config/apps/sys/shell.conf
 touch %{buildroot}%{_sharedstatedir}/ondemand-nginx/config/apps/sys/myjobs.conf
-
-touch %{buildroot}%{_sysconfdir}/ood/config/ood_portal.sha256sum
 
 %__cp -R hooks %{buildroot}/opt/ood/hooks
 %__install -D -m 644 hooks/hook.env.example %{buildroot}%{_sysconfdir}/ood/config/hook.env
@@ -229,7 +226,7 @@ semodule -r %{name}-selinux 2>/dev/null || :
 %postun
 if [ "$1" -eq 0 ]; then
 /bin/systemctl daemon-reload &>/dev/null || :
-/bin/systemctl try-restart %{apache_service}.service %{htcacheclean_service}.service &>/dev/null || :
+/bin/systemctl try-restart %{apache_service}.service &>/dev/null || :
 fi
 
 %postun selinux
@@ -250,12 +247,7 @@ touch %{_localstatedir}/www/ood/apps/sys/dashboard/tmp/restart.txt
 touch %{_localstatedir}/www/ood/apps/sys/shell/tmp/restart.txt
 touch %{_localstatedir}/www/ood/apps/sys/myjobs/tmp/restart.txt
 
-# Rebuild Apache config and restart Apache httpd if config changed
-/opt/ood/ood-portal-generator/sbin/update_ood_portal --rpm --detailed-exitcodes
-if [[ $? -eq 3 ]] ; then
-/bin/systemctl try-restart %{apache_service}.service %{htcacheclean_service}.service &>/dev/null || :
-fi
-
+/bin/systemctl try-restart %{apache_service}.service &>/dev/null || :
 
 %files
 %defattr(-,root,root)
@@ -284,6 +276,7 @@ fi
 %dir %{_localstatedir}/www/ood/apps/sys
 %dir %{_localstatedir}/www/ood/apps/usr
 %config(noreplace,missingok) %{_localstatedir}/www/ood/public/maintenance/index.html
+%{_localstatedir}/www/ood/public/need_auth.html
 %ghost %{_sysconfdir}/ood/maintenance.enable
 %config(noreplace,missingok) %{_localstatedir}/www/ood/public/logo.png
 %config(noreplace,missingok) %{_localstatedir}/www/ood/public/favicon.ico
@@ -293,7 +286,7 @@ fi
 %config(noreplace,missingok) %{_sysconfdir}/ood/config/nginx_stage.yml
 %config(noreplace,missingok) %{_sysconfdir}/ood/config/ood_portal.yml
 %config(noreplace,missingok) %{_sysconfdir}/ood/config/hook.env
-%ghost %{_sysconfdir}/ood/config/ood_portal.sha256sum
+%config(noreplace) %{_sysconfdir}/ood/config/ood_portal.sha256sum
 
 %dir %{_sharedstatedir}/ondemand-nginx/config
 %dir %{_sharedstatedir}/ondemand-nginx/config/puns
@@ -310,7 +303,7 @@ fi
 %config(noreplace) %{_sysconfdir}/sudoers.d/ood
 %config(noreplace) %{_sysconfdir}/cron.d/ood
 %config(noreplace) %{_sysconfdir}/logrotate.d/ood
-%ghost %{apache_confd}/ood-portal.conf
+%config(noreplace) %attr(0640, root, apache) %{apache_confd}/ood-portal.conf
 %config(noreplace) %{_sysconfdir}/systemd/system/%{apache_service}.service.d/ood.conf
 %config(noreplace,missingok) %{_sysconfdir}/systemd/system/%{apache_service}.service.d/ood-portal.conf
 %{_tmpfilesdir}/ondemand-nginx.conf

@@ -4,8 +4,8 @@
   <title><%= content_for?(:title) ? yield(:title) : "Dashboard - #{OodAppkit.dashboard.title}" %></title>
   <%= favicon_link_tag 'favicon.ico', href: OodAppkit.public.url.join('favicon.ico'), skip_pipeline: true %>
 
-  <%= javascript_pack_tag 'application', nonce: true %>
-  <%= stylesheet_pack_tag 'application', nonce: true, media: 'all' %>
+  <%= javascript_include_tag 'application', nonce: true %>
+  <%= stylesheet_link_tag 'application', nonce: true, media: 'all' %>
 
   <%= csrf_meta_tags %>
 
@@ -23,7 +23,7 @@
   <header>
     <nav class="navbar navbar-expand-md shadow-sm navbar-color navbar-<%= Configuration.navbar_type %>" aria-label="Navigation">
     <% if ENV['OOD_DASHBOARD_HEADER_IMG_LOGO'].present? %>
-      <a class="navbar-brand navbar-brand-logo" href="<%= root_path %>"><img class="img-fluid" src="<%= ENV['OOD_DASHBOARD_HEADER_IMG_LOGO'] %>"></a>
+      <a class="navbar-brand navbar-brand-logo" href="<%= root_path %>"><img class="img-fluid" src="<%= ENV['OOD_DASHBOARD_HEADER_IMG_LOGO'] %>" alt="<%= OodAppkit.dashboard.title.html_safe %>"></a>
     <% else %>
       <a class="navbar-brand" href="<%= root_path %>"><%= OodAppkit.dashboard.title.html_safe %></a>
     <% end %>

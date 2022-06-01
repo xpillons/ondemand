@@ -39,7 +39,7 @@ module OodPortalGenerator
     end
 
     def fqdn
-      Socket.gethostbyname(Socket.gethostname).first
+      Addrinfo.getaddrinfo(Socket.gethostname, nil, :INET, :STREAM, nil, Socket::AI_CANONNAME).first.canonname
     end
 
     # Determine dex username
@@ -47,7 +47,7 @@ module OodPortalGenerator
     def dex_user
       Etc.getpwnam('ondemand-dex').name
     rescue ArgumentError
-      Etc.getlogin
+      Etc.getpwuid.name
     end
 
     # Determine dex group name
@@ -55,7 +55,7 @@ module OodPortalGenerator
     def dex_group
       Etc.getgrnam('ondemand-dex').name
     rescue ArgumentError
-      gid = Etc.getpwnam(Etc.getlogin).gid
+      gid = Etc.getpwuid.gid
       Etc.getgrgid(gid).name
     end
 
@@ -74,6 +74,11 @@ module OodPortalGenerator
       rescue ArgumentError
       end
       group
+    end
+
+    def chown_apache_user
+      return 'root' if Process.uid == 0
+      Etc.getpwuid(Process.uid).name
     end
   end
 end
