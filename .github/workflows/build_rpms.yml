@@ -1,0 +1,88 @@
+name: Build RPMs
+
+on:
+  workflow_dispatch:
+  push:
+#    branches: [azhop/devel]
+    tags:
+      - '*'
+
+jobs:
+  build-packages:
+    strategy:
+      fail-fast: false
+      matrix:
+        dist: ["el7"] # "el8", "ubuntu-20.04"
+        version: ["2.0"]
+        build: ["23"]
+    runs-on: "ubuntu-latest"
+    name: Build ${{ matrix.dist }} (ondemand-${{ matrix.version }}-${{ matrix.build }})
+
+    steps:
+      - name: Checkout ${{ github.sha }}
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Checkout ood_core
+        uses: actions/checkout@v3
+        with:
+          repository: xpillons/ood_core
+          path: apps/dashboard/vendor/gems/ood_core
+          ref: azhop/0.19.0
+
+      - name: Setup Ruby using Bundler
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "2.7.1"
+          bundler: "2.1.4"
+          bundler-cache: true
+
+      - name: Build vendors
+        run: |
+          cd /home/runner/work/ondemand/ondemand/apps/dashboard/vendor/gems/ood_core
+          bundle install
+        env:
+          VERSION: "${{ matrix.version }}.${{ matrix.build }}"
+          OOD_PACKAGING_DEBUG: 'true'
+
+      - name: Update Gemfile to use vendor/gems/ood_core
+        run: |
+          sed -i "s|ood_core', '~> 0.11|ood_core', :path => 'vendor/gems/ood_core|g" /home/runner/work/ondemand/ondemand/apps/dashboard/Gemfile
+          grep ood_core /home/runner/work/ondemand/ondemand/apps/dashboard/Gemfile
+
+      - name: Build package
+        run: |
+          bundle exec rake rake --tasks
+          bundle exec rake package:rpm[${{ matrix.dist }}] --trace=stdout --verbose
+        env:
+          VERSION: "${{ matrix.version }}.${{ matrix.build }}"
+          OOD_PACKAGING_DEBUG: 'true'
+
+      - name: Run package tests
+        run: bundle exec rake test:e2e
+        env:
+          BEAKER_set: ${{ matrix.dist }}
+          OOD_BUILD_REPO: ${{ matrix.version }}
+
+      - name: List packages
+        run: |
+          ls -alrt /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/
+
+#       - name: Create Release
+#         uses: softprops/action-gh-release@v1
+#         with:
+#           prerelease: true
+#           files: |
+#             /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-gems-${{ matrix.version }}.${{ matrix.build }}-1.el7.x86_64.rpm
+#             /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-selinux-${{ matrix.version }}.${{ matrix.build }}-1.el7.x86_64.rpm
+# #            /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-${{ matrix.version }}.${{ matrix.build }}-1.el7.src.rpm
+#             /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-${{ matrix.version }}.${{ matrix.build }}-1.el7.x86_64.rpm
+#             /home/runner/work/ondemand/ondemand/dist/${{ matrix.dist }}/ondemand-gems-${{ matrix.version }}.${{ matrix.build }}-${{ matrix.version }}.${{ matrix.build }}-1.el7.x86_64.rpm
+#         env:
+#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Debug failure
+        if: failure()
+        run: |
+          find tmp/e2e_ctr/ -type f -name *.log -exec cat {} +
